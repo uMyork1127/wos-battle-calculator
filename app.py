@@ -74,6 +74,147 @@ st.markdown(
 
 st.title("❄️ 寒霜啟示錄 - 全功能 AI 戰術指揮與模擬診斷系統")
 
+# ---------------------------------------------------------
+# 選單常數設定
+# ---------------------------------------------------------
+HERO_LIST = [
+    "【1代-盾】赫羅尼莫 (Jeronimo)",
+    "【1代-盾】娜塔莉亞 (Natalia)",
+    "【1代-矛】茉莉 (Molly)",
+    "【1代-射】津曼 (Zinman)",
+    "【2代-盾】弗林特 (Flint)",
+    "【2代-射】阿隆索 (Alonso)",
+    "【2代-矛】菲蘭德 (Philly)",
+    "【3代-矛】米婭 (Mia)",
+    "【3代-射】格雷格 (Greg)",
+    "【3代-盾】羅根 (Logan)",
+    "【4代-盾】阿赫摩斯 (Ahmose)",
+    "【4代-矛】玲奈 (Reina)",
+    "【4代-射】琳恩 (Lynn)",
+    "【5代-盾】赫克托 (Hector)",
+    "【5代-矛】芮妮 (Renee)",
+    "【5代-射】格溫 (Gwen)",
+    "【6代-盾】無名 (Wu Ming)",
+    "【6代-射】韋恩 (Wayne)",
+    "【6代-矛】諾拉 (Norah)",
+    "【7代-射】布拉德利 (Bradley)",
+    "【7代-矛】艾迪絲 (Edith)",
+    "【7代-射】哥頓 (Gordon)",
+    "【紫卡-盾】謝爾蓋 (Sergey)",
+    "【紫卡-矛】杰西 (Jessie) - 傷害+",
+    "【紫卡-矛】派翠克 (Patrick) - 生命/恢復+",
+    "【紫卡-射】巴希提 (Bahiti)",
+    "【紫卡-射】書允 (Seo-yoon)",
+    "無 / 其他普通英雄",
+]
+
+STAR_OPTIONS = [
+    "5 星 (100% 技能效果)",
+    "4 星 (80% 技能效果)",
+    "3 星 (60% 技能效果)",
+    "2 星 (40% 技能效果)",
+    "1 星 (20% 技能效果)",
+]
+
+# ---------------------------------------------------------
+# Session State 預設值與初始化
+# ---------------------------------------------------------
+# ---------------------------------------------------------
+# Session State 預設值與初始化 (全清空/歸零版本)
+# ---------------------------------------------------------
+defaults = {
+    "a_name": "",
+    "d_name": "",
+    # 攻方 兵量 / 平均階級 / 平均火晶
+    "a_inf_cnt": 0,
+    "a_inf_tier": 10.0,
+    "a_inf_fc": 0.0,
+    "a_lan_cnt": 0,
+    "a_lan_tier": 10.0,
+    "a_lan_fc": 0.0,
+    "a_mar_cnt": 0,
+    "a_mar_tier": 10.0,
+    "a_mar_fc": 0.0,
+    # 守方 兵量 / 平均階級 / 平均火晶
+    "d_inf_cnt": 0,
+    "d_inf_tier": 10.0,
+    "d_inf_fc": 0.0,
+    "d_lan_cnt": 0,
+    "d_lan_tier": 10.0,
+    "d_lan_fc": 0.0,
+    "d_mar_cnt": 0,
+    "d_mar_tier": 10.0,
+    "d_mar_fc": 0.0,
+    # 12 大屬性 (%) 歸零
+    "a_i_a": 0.0,
+    "a_i_d": 0.0,
+    "a_i_l": 0.0,
+    "a_i_h": 0.0,
+    "a_l_a": 0.0,
+    "a_l_d": 0.0,
+    "a_l_l": 0.0,
+    "a_l_h": 0.0,
+    "a_m_a": 0.0,
+    "a_m_d": 0.0,
+    "a_m_l": 0.0,
+    "a_m_h": 0.0,
+    "d_i_a": 0.0,
+    "d_i_d": 0.0,
+    "d_i_l": 0.0,
+    "d_i_h": 0.0,
+    "d_l_a": 0.0,
+    "d_l_d": 0.0,
+    "d_l_l": 0.0,
+    "d_l_h": 0.0,
+    "d_m_a": 0.0,
+    "d_m_d": 0.0,
+    "d_m_l": 0.0,
+    "d_m_h": 0.0,
+    # 特殊加成 - 歸零
+    "a_sp_def_eff": 0.0,
+    "a_sp_rally_atk": 0.0,
+    "a_sp_rally_sth": 0.0,
+    "a_sp_pet_atk": 0.0,
+    "a_sp_pet_def": 0.0,
+    "a_sp_pet_sth": 0.0,
+    "a_sp_pet_hp": 0.0,
+    "a_sp_pet_de_def": 0.0,
+    "a_sp_pet_de_sth": 0.0,
+    "a_sp_pet_de_hp": 0.0,
+    "a_sp_exp_de_sth": 0.0,
+    "d_sp_def_eff": 0.0,
+    "d_sp_city_atk": 0.0,
+    "d_sp_city_def": 0.0,
+    "d_sp_city_sth": 0.0,
+    "d_sp_pet_atk": 0.0,
+    "d_sp_pet_def": 0.0,
+    "d_sp_pet_sth": 0.0,
+    "d_sp_pet_hp": 0.0,
+    "d_sp_pet_de_def": 0.0,
+    "d_sp_pet_de_sth": 0.0,
+    "d_sp_pet_de_hp": 0.0,
+    "d_sp_exp_de_sth": 0.0,
+}
+
+# 補全英雄與專武設定預設值
+for i in range(1, 4):
+    defaults[f"a_l{i}_hero"] = HERO_LIST[0]
+    defaults[f"a_l{i}_stars"] = STAR_OPTIONS[0]
+    defaults[f"a_l{i}_wp"] = 5
+    defaults[f"d_l{i}_hero"] = HERO_LIST[0]
+    defaults[f"d_l{i}_stars"] = STAR_OPTIONS[0]
+    defaults[f"d_l{i}_wp"] = 5
+
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+
+# 一鍵清空/重置 回呼函數
+def reset_all_inputs():
+    for key, default_val in defaults.items():
+        st.session_state[key] = default_val
+
 
 # ---------------------------------------------------------
 # 快取載入 EasyOCR 模型
@@ -97,88 +238,6 @@ tab_input, tab_special, tab_compare, tab_heroes, tab_whatif, tab_advice, tab_dic
     ]
 )
 
-# ---------------------------------------------------------
-# Session State 初始化
-# ---------------------------------------------------------
-defaults = {
-    "a_name": "[UWD]蝶",
-    "d_name": "[NRG]ODYESSUS",
-    # 攻方 兵量 / 平均階級 / 平均火晶
-    "a_inf_cnt": 100000,
-    "a_inf_tier": 10.0,
-    "a_inf_fc": 7.0,
-    "a_lan_cnt": 50000,
-    "a_lan_tier": 10.0,
-    "a_lan_fc": 7.0,
-    "a_mar_cnt": 50000,
-    "a_mar_tier": 10.0,
-    "a_mar_fc": 7.0,
-    # 守方 兵量 / 平均階級 / 平均火晶
-    "d_inf_cnt": 100000,
-    "d_inf_tier": 10.0,
-    "d_inf_fc": 7.0,
-    "d_lan_cnt": 50000,
-    "d_lan_tier": 10.0,
-    "d_lan_fc": 7.0,
-    "d_mar_cnt": 50000,
-    "d_mar_tier": 10.0,
-    "d_mar_fc": 7.0,
-    # 12大屬性 (%)
-    "a_i_a": 1362.9,
-    "a_i_d": 1101.5,
-    "a_i_l": 823.3,
-    "a_i_h": 702.0,
-    "a_l_a": 1118.1,
-    "a_l_d": 866.9,
-    "a_l_l": 758.9,
-    "a_l_h": 627.0,
-    "a_m_a": 1404.1,
-    "a_m_d": 1076.6,
-    "a_m_l": 870.7,
-    "a_m_h": 728.6,
-    "d_i_a": 1599.4,
-    "d_i_d": 1636.8,
-    "d_i_l": 1220.7,
-    "d_i_h": 1150.0,
-    "d_l_a": 1312.1,
-    "d_l_d": 1295.3,
-    "d_l_l": 871.4,
-    "d_l_h": 525.4,
-    "d_m_a": 1752.3,
-    "d_m_d": 1655.6,
-    "d_m_l": 1403.9,
-    "d_m_h": 1030.7,
-    # 特殊加成 - 攻方
-    "a_sp_def_eff": 0.0,
-    "a_sp_rally_atk": 15.0,
-    "a_sp_rally_sth": 10.0,
-    "a_sp_pet_atk": 0.0,
-    "a_sp_pet_def": 0.0,
-    "a_sp_pet_sth": 0.0,
-    "a_sp_pet_hp": 0.0,
-    "a_sp_pet_de_def": 0.0,
-    "a_sp_pet_de_sth": 0.0,
-    "a_sp_pet_de_hp": 0.0,
-    "a_sp_exp_de_sth": 0.0,
-    # 特殊加成 - 守方
-    "d_sp_def_eff": 10.0,
-    "d_sp_city_atk": 15.0,
-    "d_sp_city_def": 7.5,
-    "d_sp_city_sth": 12.5,
-    "d_sp_pet_atk": 9.0,
-    "d_sp_pet_def": 5.0,
-    "d_sp_pet_sth": 6.0,
-    "d_sp_pet_hp": 5.0,
-    "d_sp_pet_de_def": -5.0,
-    "d_sp_pet_de_sth": -5.0,
-    "d_sp_pet_de_hp": -5.0,
-    "d_sp_exp_de_sth": -0.75,
-}
-
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
 
 def calc_troop_weight(avg_tier: float, avg_fc: float) -> float:
     fc_points = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
@@ -197,11 +256,7 @@ def calc_troop_weight(avg_tier: float, avg_fc: float) -> float:
 # TAB 1: 截圖辨識與面板
 # ---------------------------------------------------------
 with tab_input:
-    if st.button("🧹 一鍵清空/重置所有數值"):
-        for key in list(st.session_state.keys()):
-            if key in defaults:
-                st.session_state[key] = defaults[key]
-        st.rerun()
+    st.button("🧹 一鍵清空/重置所有數值", on_click=reset_all_inputs)
 
     st.subheader("🖼️ 1. 上傳戰報與面板截圖")
     uploaded_files = st.file_uploader(
@@ -216,9 +271,7 @@ with tab_input:
         for idx, file in enumerate(files_to_show):
             image = Image.open(file)
             with cols[idx % 4]:
-                st.image(
-                    image, caption=f"截圖 {idx + 1}", use_container_width=True
-                )
+                st.image(image, caption=f"截圖 {idx + 1}", width="stretch")
 
         st.markdown("---")
         if not ocr_available:
@@ -282,7 +335,7 @@ with tab_input:
                                 st.session_state[k] = abs(pct_numbers[idx])
 
                         st.success(
-                            f"✅ 已完成 12 大基礎屬性解析！若有誤差請於下方手動修正。"
+                            "✅ 已完成 12 大基礎屬性解析！若有誤差請於下方手動修正。"
                         )
                         st.rerun()
 
@@ -559,7 +612,7 @@ with tab_special:
         st.number_input("敵方殺傷力減益 (專家技能) %", key="d_sp_exp_de_sth")
 
 # ---------------------------------------------------------
-# TAB 3: 動態 12 大屬性對比表 (字體加大與紅綠著色)
+# TAB 3: 動態 12 大屬性對比表
 # ---------------------------------------------------------
 with tab_compare:
     st.header("📊 12 大屬性動態 Delta 對比表")
@@ -622,8 +675,6 @@ with tab_compare:
         col_diff_head: diffs,
     }).set_index("屬性項目")
 
-
-    # 數據亮色與字體優化函式
     def style_delta(val):
         if val > 0:
             return "color: #2e7d32; font-weight: bold; font-size: 1.15rem;"
@@ -631,58 +682,17 @@ with tab_compare:
             return "color: #d32f2f; font-weight: bold; font-size: 1.15rem;"
         return "color: #616161; font-size: 1.15rem;"
 
-
-    # 修正使用 .map 替代 .applymap
     styled_df = (
         df_compare.style.map(style_delta, subset=[col_diff_head])
         .format("{:+.1f}%", subset=[col_diff_head])
         .format("{:.1f}%", subset=[col_a_head, col_d_head])
     )
 
-    st.dataframe(styled_df, use_container_width=True, height=500)
+    st.dataframe(styled_df, width="stretch", height=500)
 
 # ---------------------------------------------------------
 # HEROES & PETS
 # ---------------------------------------------------------
-HERO_LIST = [
-    "【1代-盾】赫羅尼莫 (Jeronimo)",
-    "【1代-盾】娜塔莉亞 (Natalia)",
-    "【1代-矛】茉莉 (Molly)",
-    "【1代-射】津曼 (Zinman)",
-    "【2代-盾】弗林特 (Flint)",
-    "【2代-射】阿隆索 (Alonso)",
-    "【2代-矛】菲蘭德 (Philly)",
-    "【3代-矛】米婭 (Mia)",
-    "【3代-射】格雷格 (Greg)",
-    "【3代-盾】羅根 (Logan)",
-    "【4代-盾】阿赫摩斯 (Ahmose)",
-    "【4代-矛】玲奈 (Reina)",
-    "【4代-射】琳恩 (Lynn)",
-    "【5代-盾】赫克托 (Hector)",
-    "【5代-矛】芮妮 (Renee)",
-    "【5代-射】格溫 (Gwen)",
-    "【6代-盾】無名 (Wu Ming)",
-    "【6代-射】韋恩 (Wayne)",
-    "【6代-矛】諾拉 (Norah)",
-    "【7代-射】布拉德利 (Bradley)",
-    "【7代-矛】艾迪絲 (Edith)",
-    "【7代-射】哥頓 (Gordon)",
-    "【紫卡-盾】謝爾蓋 (Sergey)",
-    "【紫卡-矛】杰西 (Jessie) - 傷害+",
-    "【紫卡-矛】派翠克 (Patrick) - 生命/恢復+",
-    "【紫卡-射】巴希提 (Bahiti)",
-    "【紫卡-射】書允 (Seo-yoon)",
-    "無 / 其他普通英雄",
-]
-
-STAR_OPTIONS = [
-    "5 星 (100% 技能效果)",
-    "4 星 (80% 技能效果)",
-    "3 星 (60% 技能效果)",
-    "2 星 (40% 技能效果)",
-    "1 星 (20% 技能效果)",
-]
-
 with tab_heroes:
     st.header("🦸‍♂️ 車頭英雄與專武獨立配置")
     col_h_a, col_h_d = st.columns(2)
@@ -695,11 +705,7 @@ with tab_heroes:
                 st.selectbox(f"選擇英雄", HERO_LIST, key=f"a_l{i}_hero")
                 st.selectbox(f"星數", STAR_OPTIONS, key=f"a_l{i}_stars")
                 wp = st.slider(
-                    f"專武等級 (Lv.0 ~ Lv.10)",
-                    0,
-                    10,
-                    value=5,
-                    key=f"a_l{i}_wp",
+                    f"專武等級 (Lv.0 ~ Lv.10)", 0, 10, key=f"a_l{i}_wp"
                 )
                 a_lead_wp_sum += wp
 
@@ -711,11 +717,7 @@ with tab_heroes:
                 st.selectbox(f"選擇英雄", HERO_LIST, key=f"d_l{i}_hero")
                 st.selectbox(f"星數", STAR_OPTIONS, key=f"d_l{i}_stars")
                 wp = st.slider(
-                    f"專武等級 (Lv.0 ~ Lv.10)",
-                    0,
-                    10,
-                    value=5,
-                    key=f"d_l{i}_wp",
+                    f"專武等級 (Lv.0 ~ Lv.10)", 0, 10, key=f"d_l{i}_wp"
                 )
                 d_lead_wp_sum += wp
 
@@ -723,7 +725,7 @@ with tab_heroes:
     d_weapon_buff = (d_lead_wp_sum / 3.0) * 2.5
 
 # ---------------------------------------------------------
-# 全局 盾兵 EHP 計算 (含特殊加成與減益)
+# 全局 盾兵 EHP 計算
 # ---------------------------------------------------------
 a_eff_def = (
     st.session_state.a_i_d
@@ -798,13 +800,14 @@ with tab_whatif:
         f"{sim_ehp:,.0f}",
         delta=f"+{sim_ehp - a_ehp:,.0f}",
     )
-    m_b3.metric(
-        "EHP 成長幅度",
-        f"+{((sim_ehp/a_ehp)-1)*100:.1f}%" if a_ehp > 0 else "0%",
+
+    ehp_growth = (
+        f"+{((sim_ehp / a_ehp) - 1) * 100:.1f}%" if a_ehp > 0 else "0.0%"
     )
+    m_b3.metric("EHP 成長幅度", ehp_growth)
 
 # ---------------------------------------------------------
-# TAB 5: AI 戰術診斷報告 (含戰敗戰勝歸因分析)
+# TAB 5: AI 戰術診斷報告
 # ---------------------------------------------------------
 with tab_advice:
     st.header("💡 AI 戰術大師診斷與戰果歸因報告")
@@ -827,10 +830,9 @@ with tab_advice:
             win_rate_a = (
                 (score_a / (score_a + score_d)) * 100
                 if (score_a + score_d) > 0
-                else 50
+                else 50.0
             )
 
-            is_win = win_rate_a >= 50
             status_color = "green" if win_rate_a >= 55 else (
                 "red" if win_rate_a <= 45 else "orange"
             )
@@ -843,8 +845,6 @@ with tab_advice:
             )
 
             st.markdown("---")
-
-            # ---------------- 戰敗 / 戰勝原因歸因邏輯 ----------------
             st.markdown("### 🔍 戰局勝敗可能原因深度剖析 (Root Cause Analysis)")
 
             losses_reasons = []
@@ -862,7 +862,6 @@ with tab_advice:
 
             # 2. 射手與破防/殺傷差距
             m_sth_diff = st.session_state.a_m_l - st.session_state.d_m_l
-            m_atk_diff = st.session_state.a_m_a - st.session_state.d_m_a
             if m_sth_diff < -300:
                 losses_reasons.append(
                     f"**射手殺傷力落後過多 ({m_sth_diff:+.1f}%)**：敵方射手殺傷高達 `{st.session_state.d_m_l}%`（攻方僅 `{st.session_state.a_m_l}%`），對方能對我方盾兵造成毀滅性穿透傷害。"
@@ -899,13 +898,11 @@ with tab_advice:
                     f"**守方建築與寵物加成過高**：守方享有守城攻擊 `+{st.session_state.d_sp_city_atk}%` 與寵物加成，抵消了攻方的進攻優勢。"
                 )
 
-            # 顯示致命戰敗原因
             if losses_reasons:
                 st.markdown("#### 🚨 戰敗致命要因 (Why You Might Lose)")
                 for r in losses_reasons:
                     st.markdown(f"* {r}")
 
-            # 顯示戰勝核心優勢
             if win_reasons:
                 st.markdown("#### 🟢 戰勝核心優勢 (Why You Might Win)")
                 for r in win_reasons:
