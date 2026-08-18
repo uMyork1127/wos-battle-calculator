@@ -20,7 +20,7 @@ tab_input, tab_compare, tab_heroes, tab_whatif, tab_advice, tab_dict = st.tabs(
     [
         "📸 截圖辨識與面板",
         "📊 12大屬性與 Delta",
-        "🦸‍♂️ 英雄與車身疊加計算",
+        "🦸‍♂️ 1~7代英雄/專武與寵物系統",
         "🧮 配兵推薦與 What-If 模擬",
         "💡 AI 深度診斷與戰法匯出",
         "📖 戰術名詞小百科",
@@ -28,12 +28,62 @@ tab_input, tab_compare, tab_heroes, tab_whatif, tab_advice, tab_dict = st.tabs(
 )
 
 # ---------------------------------------------------------
-# 1. Session State 預設值初始化
+# 1~7 代英雄資料庫 (含常用史詩紫卡)
+# ---------------------------------------------------------
+HERO_LIST = [
+    "【1代-盾】赫羅尼莫 (Jeronimo)",
+    "【1代-盾】娜塔莉亞 (Natalia)",
+    "【1代-矛】茉莉 (Molly)",
+    "【1代-射】津曼 (Zinman)",
+    "【2代-盾】弗林特 (Flint)",
+    "【2代-射】阿隆索 (Alonso)",
+    "【2代-矛】菲蘭德 (Philly)",
+    "【3代-矛】米婭 (Mia)",
+    "【3代-射】格雷格 (Greg)",
+    "【3代-盾】羅根 (Logan)",
+    "【4代-盾】阿赫摩斯 (Ahmose)",
+    "【4代-矛】玲奈 (Reina)",
+    "【4代-射】琳恩 (Lynn)",
+    "【5代-盾】赫克托 (Hector)",
+    "【5代-矛】芮妮 (Renee)",
+    "【5代-射】格溫 (Gwen)",
+    "【6代-盾】無名 (Wu Ming)",
+    "【6代-射】韋恩 (Wayne)",
+    "【6代-矛】諾拉 (Norah)",
+    "【7代-射】布拉德利 (Bradley)",
+    "【7代-矛】艾迪絲 (Edith)",
+    "【7代-射】哥頓 (Gordon)",
+    "【紫卡-盾】謝爾蓋 (Sergey)",
+    "【紫卡-矛】杰西 (Jessie) - 傷害+",
+    "【紫卡-矛】派翠克 (Patrick) - 生命/恢復+",
+    "【紫卡-射】巴希提 (Bahiti)",
+    "【紫卡-射】書允 (Seo-yoon)",
+    "無 / 其他普通英雄",
+]
+
+STAR_OPTIONS = [
+    "5 星 (100% 技能加成)",
+    "4 星 (80% 技能加成)",
+    "3 星 (60% 技能加成)",
+    "2 星 (40% 技能加成)",
+    "1 星 (20% 技能加成)",
+]
+
+STAR_RATIO = {
+    "5 星 (100% 技能加成)": 1.00,
+    "4 星 (80% 技能加成)": 0.80,
+    "3 星 (60% 技能加成)": 0.60,
+    "2 星 (40% 技能加成)": 0.40,
+    "1 星 (20% 技能加成)": 0.20,
+}
+
+# ---------------------------------------------------------
+# Session State 預設值初始化
 # ---------------------------------------------------------
 defaults = {
     "a_name": "攻擊方玩家",
     "d_name": "防守方玩家",
-    # 屬性面板預設 (%)
+    # 面板預設 (%)
     "a_i_a": 0.0,
     "a_i_d": 0.0,
     "a_i_l": 0.0,
@@ -58,25 +108,21 @@ defaults = {
     "d_m_d": 0.0,
     "d_m_l": 0.0,
     "d_m_h": 0.0,
-    # 英雄與車身疊加預設
-    "a_leader": "赫羅尼莫 / 傑西 / 納塔莉",
-    "a_joiner_hero": "傑西 (Jessie) - 傷害 +25%",
-    "a_joiner_count": 4,
-    "d_leader": "赫羅尼莫 / 派翠克 / 謝爾蓋",
-    "d_joiner_hero": "派翠克 (Patrick) - 生命恢復與生命提升",
-    "d_joiner_count": 4,
-    # 寵物戰術勾選
-    "a_pet_snow": False,
-    "a_pet_tiger": False,
-    "d_pet_snow": False,
-    "d_pet_hyena": False,
+    # 寵物設定預設
+    "a_pet_snow_enable": False,
+    "a_pet_snow_lvl": 5,
+    "a_pet_tiger_enable": False,
+    "a_pet_tiger_lvl": 5,
+    "d_pet_hyena_enable": False,
+    "d_pet_hyena_lvl": 5,
+    "d_pet_snow_enable": False,
+    "d_pet_snow_lvl": 5,
 }
 
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# 預設兵力動態表格
 default_a_df = pd.DataFrame([
     {"兵種": "🛡️ 盾兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
     {"兵種": "🗡️ 矛兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
@@ -94,7 +140,6 @@ if "a_troops_df" not in st.session_state:
 if "d_troops_df" not in st.session_state:
     st.session_state["d_troops_df"] = default_d_df.copy()
 
-# 火晶與兵階之 EHP 加權係數表
 WEIGHT_MAP = {
     ("FC5", "T10"): 1.00,
     ("FC5", "T11 (太陽神)"): 1.15,
@@ -107,11 +152,10 @@ WEIGHT_MAP = {
 }
 
 # ---------------------------------------------------------
-# TAB 1: 圖片上傳、OCR 辨識與動態兵種數量輸入
+# TAB 1: 圖片上傳、OCR 辨識與兵種輸入
 # ---------------------------------------------------------
 with tab_input:
-    # 🧹 一鍵清空 / 安全重置按鈕
-    if st.button("🧹 一鍵清空所有數值與自訂組合"):
+    if st.button("🧹 一鍵清空所有數值"):
         for key in list(st.session_state.keys()):
             if key in defaults:
                 st.session_state[key] = defaults[key]
@@ -142,7 +186,7 @@ with tab_input:
         if not ocr_available:
             st.warning("⚠️ 系統尚未加載 EasyOCR，請確認套件已安裝。")
         else:
-            if st.button("🚀 啟動 AI 辨識並自動帶入面板數據", type="primary"):
+            if st.button("🚀 啟動 AI 辨識並帶入數據", type="primary"):
                 with st.spinner("AI 解析中..."):
                     reader = easyocr.Reader(["ch_tra", "en"], gpu=False)
                     extracted_text = []
@@ -219,11 +263,7 @@ with tab_input:
             required=True,
         ),
         "數量": st.column_config.NumberColumn(
-            "兵量",
-            min_value=0,
-            step=1000,
-            default=0,
-            required=True,
+            "兵量", min_value=0, step=1000, default=0, required=True
         ),
     }
 
@@ -232,7 +272,7 @@ with tab_input:
         st.header("⚔️ 攻擊方 (Attacker)")
         st.text_input("玩家名稱", key="a_name")
 
-        st.caption("📋 兵種組合表 (點擊表格最下方 `+` 可新增任意組合)")
+        st.caption("📋 兵種組合表")
         edited_a_df = st.data_editor(
             st.session_state["a_troops_df"],
             num_rows="dynamic",
@@ -242,7 +282,6 @@ with tab_input:
         )
         st.session_state["a_troops_df"] = edited_a_df
 
-        # 計算攻擊方兵力與 EHP 加權
         a_inf_total, a_lan_total, a_mar_total, a_w_inf = 0, 0, 0, 0.0
         for _, row in edited_a_df.iterrows():
             b_type = str(row.get("兵種", ""))
@@ -289,7 +328,7 @@ with tab_input:
         st.header("🏰 防守方 (Defender)")
         st.text_input("玩家名稱", key="d_name")
 
-        st.caption("📋 兵種組合表 (點擊表格最下方 `+` 可新增任意組合)")
+        st.caption("📋 兵種組合表")
         edited_d_df = st.data_editor(
             st.session_state["d_troops_df"],
             num_rows="dynamic",
@@ -299,7 +338,6 @@ with tab_input:
         )
         st.session_state["d_troops_df"] = edited_d_df
 
-        # 計算防守方兵力與 EHP 加權
         d_inf_total, d_lan_total, d_mar_total, d_w_inf = 0, 0, 0, 0.0
         for _, row in edited_d_df.iterrows():
             b_type = str(row.get("兵種", ""))
@@ -411,89 +449,158 @@ with tab_compare:
     )
 
 # ---------------------------------------------------------
-# TAB 3: 🦸‍♂️ 英雄與車身遠征技能自動疊加計算器
+# TAB 3: 🦸‍♂️ 1~7 代英雄/專武與寵物系統
 # ---------------------------------------------------------
 with tab_heroes:
-    st.header("🦸‍♂️ 車頭/車身英雄選擇與被動技能自動疊加")
-    st.markdown(
-        "根據遊戲機制：**集結/駐守的前 4 位車身玩家**，其主要英雄的第一個遠征技能會自動生效並疊加。"
-    )
+    st.header("🦸‍♂️ 1~7 代英雄個體獨立配置 (車頭/車身分開選擇)")
 
     col_h_a, col_h_d = st.columns(2)
 
+    # ---------------- 攻擊方英雄配置 ----------------
     with col_h_a:
-        st.subheader("⚔️ 攻擊方車頭與車身配置")
-        st.text_input("集結車頭 3 隻主將名稱", key="a_leader")
+        st.subheader("⚔️ 攻擊方 (車頭 3 主將 + 車身 4 隊友)")
 
-        st.selectbox(
-            "選擇車身第一英雄 (Joiner Hero)",
-            options=[
-                "傑西 (Jessie) - 傷害 +25%",
-                "赫羅尼莫 (Jeronimo) - 傷害 +15%",
-                "金恩尚 (Shin Eun-seong) - 傷害 +20%",
-                "無 / 其他普通英雄 - 無加成",
-            ],
-            key="a_joiner_hero",
-        )
-        st.slider(
-            "有效車身數量 (上限 4 人)",
-            min_value=0,
-            max_value=4,
-            value=4,
-            key="a_joiner_count",
-        )
+        st.markdown("##### 👑 車頭 3 隻主將 (帶領全隊)")
+        a_lead_weapons_sum = 0
 
-        atk_buff_pct = 0
-        if "傑西" in st.session_state.a_joiner_hero:
-            atk_buff_pct = 25 * st.session_state.a_joiner_count
-        elif "赫羅尼莫" in st.session_state.a_joiner_hero:
-            atk_buff_pct = 15 * st.session_state.a_joiner_count
-        elif "金恩尚" in st.session_state.a_joiner_hero:
-            atk_buff_pct = 20 * st.session_state.a_joiner_count
+        for i in range(1, 4):
+            with st.expander(f"主將 {i} 配置", expanded=(i == 1)):
+                st.selectbox(f"選擇英雄 (1~7代)", HERO_LIST, key=f"a_l{i}_hero")
+                st.selectbox(f"星數 (技能)", STAR_OPTIONS, key=f"a_l{i}_stars")
+                wp = st.slider(
+                    f"專屬武器等級 (+0 ~ +20)",
+                    0,
+                    20,
+                    value=10,
+                    key=f"a_l{i}_wp",
+                )
+                a_lead_weapons_sum += wp
+
+        st.markdown("---")
+        st.markdown("##### 👥 車身 4 位隊友 (第一技能疊加加成)")
+
+        a_joiner_buff_sum = 0.0
+        for j in range(1, 5):
+            with st.expander(f"車身隊友 {j} 配置", expanded=(j == 1)):
+                hero = st.selectbox(
+                    f"選擇英雄", HERO_LIST, index=23, key=f"a_j{j}_hero"
+                )  # 預設傑西
+                stars = st.selectbox(
+                    f"星數", STAR_OPTIONS, index=0, key=f"a_j{j}_stars"
+                )
+
+                s_ratio = STAR_RATIO.get(stars, 1.0)
+                base_val = 0
+                if "傑西" in hero:
+                    base_val = 25.0
+                elif "赫羅尼莫" in hero:
+                    base_val = 15.0
+                elif "莫莉" in hero:
+                    base_val = 10.0
+                elif "金恩尚" in hero:
+                    base_val = 20.0
+
+                a_joiner_buff_sum += base_val * s_ratio
+
+        a_weapon_buff = (
+            a_lead_weapons_sum / 3.0
+        ) * 1.5  # 3 位主將專武平均攻防加成
 
         st.success(
-            f"🔥 攻擊車身總傷害加成：**+{atk_buff_pct}% 傷害提升**"
+            f"🔥 攻擊車身總傷害疊加加成：**+{a_joiner_buff_sum:.1f}%**\n\n"
+            f"⚔️ 車頭專武全軍屬性加成：**+{a_weapon_buff:.1f}% 攻防**"
         )
 
+    # ---------------- 防守方英雄配置 ----------------
     with col_h_d:
-        st.subheader("🏰 防守方駐守隊長與車身配置")
-        st.text_input("駐守隊長 3 隻主將名稱", key="d_leader")
+        st.subheader("🏰 防守方 (駐守 3 隊長 + 駐守 4 車身)")
 
-        st.selectbox(
-            "選擇駐守車身核心英雄",
-            options=[
-                "派翠克 (Patrick) - 生命恢復與生命提升",
-                "謝爾蓋 (Sergey) - 受傷降低 20%",
-                "阿蒙森 (Amundsen) - 受傷降低 15%",
-                "無 / 其他普通英雄",
-            ],
-            key="d_joiner_hero",
+        st.markdown("##### 👑 駐守 3 隻隊長")
+        d_lead_weapons_sum = 0
+
+        for i in range(1, 4):
+            with st.expander(f"隊長 {i} 配置", expanded=(i == 1)):
+                st.selectbox(f"選擇英雄 (1~7代)", HERO_LIST, key=f"d_l{i}_hero")
+                st.selectbox(f"星數 (技能)", STAR_OPTIONS, key=f"d_l{i}_stars")
+                wp = st.slider(
+                    f"專屬武器等級 (+0 ~ +20)",
+                    0,
+                    20,
+                    value=10,
+                    key=f"d_l{i}_wp",
+                )
+                d_lead_weapons_sum += wp
+
+        st.markdown("---")
+        st.markdown("##### 👥 駐守車身 4 位隊友")
+
+        d_joiner_buff_sum = 0.0
+        for j in range(1, 5):
+            with st.expander(f"駐守車身 {j} 配置", expanded=(j == 1)):
+                hero = st.selectbox(
+                    f"選擇英雄", HERO_LIST, index=24, key=f"d_j{j}_hero"
+                )  # 預設派翠克
+                stars = st.selectbox(
+                    f"星數", STAR_OPTIONS, index=0, key=f"d_j{j}_stars"
+                )
+
+                s_ratio = STAR_RATIO.get(stars, 1.0)
+                base_val = 0
+                if "派翠克" in hero:
+                    base_val = 25.0  # 生命/恢復加成
+                elif "謝爾蓋" in hero:
+                    base_val = 20.0  # 受傷降低
+                elif "阿赫摩斯" in hero:
+                    base_val = 15.0
+
+                d_joiner_buff_sum += base_val * s_ratio
+
+        d_weapon_buff = (d_lead_weapons_sum / 3.0) * 1.5
+
+        st.success(
+            f"🛡️ 防守車身減傷/生命總疊加：**+{d_joiner_buff_sum:.1f}%**\n\n"
+            f"🏰 隊長專武全軍屬性加成：**+{d_weapon_buff:.1f}% 攻防**"
         )
-        st.slider(
-            "有效駐守車身數量 (上限 4 人)",
-            min_value=0,
-            max_value=4,
-            value=4,
-            key="d_joiner_count",
-        )
-
-        def_red_pct = 0
-        if "謝爾蓋" in st.session_state.d_joiner_hero:
-            def_red_pct = 20
-        elif "阿蒙森" in st.session_state.d_joiner_hero:
-            def_red_pct = 15
-
-        st.success(f"🛡️ 防守車身減傷防禦加成：**-{def_red_pct}% 受到傷害**")
 
     st.markdown("---")
-    st.subheader("🐾 寵物主動技能與戰術影響增益")
+
+    # ------------ 寵物主動技能與等級 ------------
+    st.subheader("🐾 寵物主動技能開關與技能等級 (Pet Active Skills)")
+
     cp1, cp2 = st.columns(2)
     with cp1:
-        st.checkbox("⚔️ 攻擊方啟用【雪豹】(爆發殺傷提升)", key="a_pet_snow")
-        st.checkbox("⚔️ 攻擊方啟用【劍齒虎】(穿透敵方防禦)", key="a_pet_tiger")
+        st.markdown("##### ⚔️ 攻擊方寵物")
+        c11, c12 = st.columns([2, 3])
+        with c11:
+            st.checkbox("啟用【雪豹】(爆發殺傷)", key="a_pet_snow_enable")
+        with c12:
+            st.slider("雪豹技能等級", 1, 10, key="a_pet_snow_lvl")
+
+        c21, c22 = st.columns([2, 3])
+        with c21:
+            st.checkbox(
+                "啟用【劍齒虎】(穿透防禦)", key="a_pet_tiger_enable"
+            )
+        with c22:
+            st.slider("劍齒虎技能等級", 1, 10, key="a_pet_tiger_lvl")
+
     with cp2:
-        st.checkbox("🏰 防守方啟用【巨鬣狗】(降低敵方攻擊)", key="d_pet_hyena")
-        st.checkbox("🏰 防守方啟用【雪豹】(駐守反傷加成)", key="d_pet_snow")
+        st.markdown("##### 🏰 防守方寵物")
+        c31, c32 = st.columns([2, 3])
+        with c31:
+            st.checkbox(
+                "啟用【巨鬣狗】(降低敵方攻擊)", key="d_pet_hyena_enable"
+            )
+        with c32:
+            st.slider("巨鬣狗技能等級", 1, 10, key="d_pet_hyena_lvl")
+
+        c41, c42 = st.columns([2, 3])
+        with c41:
+            st.checkbox(
+                "啟用【雪豹】(駐守反傷加成)", key="d_pet_snow_enable"
+            )
+        with c42:
+            st.slider("雪豹技能等級", 1, 10, key="d_pet_snow_lvl")
 
 # ---------------------------------------------------------
 # TAB 4: ⚔️ 最佳配兵推薦與 What-If 模擬器
@@ -537,17 +644,17 @@ with tab_whatif:
 
     base_ehp = (
         a_w_inf
-        * (1 + st.session_state.a_i_h / 100)
-        * (1 + st.session_state.a_i_d / 100)
+        * (1 + (st.session_state.a_i_h + a_weapon_buff) / 100)
+        * (1 + (st.session_state.a_i_d + a_weapon_buff) / 100)
     )
     sim_ehp = (
         a_w_inf
-        * (1 + (st.session_state.a_i_h + sim_add_h) / 100)
-        * (1 + (st.session_state.a_i_d + sim_add_d) / 100)
+        * (1 + (st.session_state.a_i_h + a_weapon_buff + sim_add_h) / 100)
+        * (1 + (st.session_state.a_i_d + a_weapon_buff + sim_add_d) / 100)
     )
 
     m_b1, m_b2, m_b3 = st.columns(3)
-    m_b1.metric("當前實際 EHP", f"{base_ehp:,.0f}")
+    m_b1.metric("當前實際 EHP (含專武)", f"{base_ehp:,.0f}")
     m_b2.metric(
         "模擬增益後 EHP",
         f"{sim_ehp:,.0f}",
@@ -566,13 +673,13 @@ with tab_advice:
 
     a_ehp = (
         a_w_inf
-        * (1 + st.session_state.a_i_h / 100)
-        * (1 + st.session_state.a_i_d / 100)
+        * (1 + (st.session_state.a_i_h + a_weapon_buff) / 100)
+        * (1 + (st.session_state.a_i_d + a_weapon_buff) / 100)
     )
     d_ehp = (
         d_w_inf
-        * (1 + st.session_state.d_i_h / 100)
-        * (1 + st.session_state.d_i_d / 100)
+        * (1 + (st.session_state.d_i_h + d_weapon_buff) / 100)
+        * (1 + (st.session_state.d_i_d + d_weapon_buff) / 100)
     )
     troop_ratio = a_total / d_total if d_total > 0 else 0
 
@@ -599,28 +706,25 @@ with tab_advice:
                 client = openai.OpenAI(api_key=api_key)
 
                 prompt_content = f"""
-你是一位《寒霜啟示錄 (Whiteout Survival)》頂級指揮官。請根據以下完整的數據、車身疊加與寵物配置，產出極具操作性的戰術報告：
+你是一位《寒霜啟示錄 (Whiteout Survival)》頂級指揮官。請根據以下精確的個體英雄配置與數據產出深度報告：
 
 【攻擊方】: {st.session_state.a_name}
-- 車頭/車身英雄: {st.session_state.a_leader} | 車身: {st.session_state.a_joiner_hero} x{st.session_state.a_joiner_count}
-- 寵物加成: 雪豹({st.session_state.a_pet_snow}), 劍齒虎({st.session_state.a_pet_tiger})
+- 車頭專武平均加成: +{a_weapon_buff:.1f}% 攻防
+- 車身 4 隊友傷害總疊加: +{a_joiner_buff_sum:.1f}%
+- 寵物: 雪豹(開:{st.session_state.a_pet_snow_enable}, Lv.{st.session_state.a_pet_snow_lvl}), 劍齒虎(開:{st.session_state.a_pet_tiger_enable}, Lv.{st.session_state.a_pet_tiger_lvl})
 - 總兵力: {a_total:,} (盾: {a_inf_total}, 矛: {a_lan_total}, 射: {a_mar_total})
-- 面板 (攻/防/殺/命): 盾({st.session_state.a_i_a}%,{st.session_state.a_i_d}%,{st.session_state.a_i_l}%,{st.session_state.a_i_h}%) | 射({st.session_state.a_m_a}%,{st.session_state.a_m_d}%,{st.session_state.a_m_l}%,{st.session_state.a_m_h}%)
-- 盾兵 EHP: {a_ehp:,.0f}
+- 綜合 EHP (含專武): {a_ehp:,.0f}
 
 【防守方】: {st.session_state.d_name}
-- 隊長/車身英雄: {st.session_state.d_leader} | 車身: {st.session_state.d_joiner_hero} x{st.session_state.d_joiner_count}
-- 寵物加成: 巨鬣狗({st.session_state.d_pet_hyena}), 雪豹({st.session_state.d_pet_snow})
+- 隊長專武平均加成: +{d_weapon_buff:.1f}% 攻防
+- 駐守車身減傷/生命總疊加: +{d_joiner_buff_sum:.1f}%
+- 寵物: 巨鬣狗(開:{st.session_state.d_pet_hyena_enable}, Lv.{st.session_state.d_pet_hyena_lvl}), 雪豹(開:{st.session_state.d_pet_snow_enable}, Lv.{st.session_state.d_pet_snow_lvl})
 - 總兵力: {d_total:,} (盾: {d_inf_total}, 矛: {d_lan_total}, 射: {d_mar_total})
-- 面板 (攻/防/殺/命): 盾({st.session_state.d_i_a}%,{st.session_state.d_i_d}%,{st.session_state.d_i_l}%,{st.session_state.d_i_h}%) | 射({st.session_state.d_m_a}%,{st.session_state.d_m_d}%,{st.session_state.d_m_l}%,{st.session_state.d_m_h}%)
-- 盾兵 EHP: {d_ehp:,.0f}
+- 綜合 EHP (含專武): {d_ehp:,.0f}
 
 【AI 配兵建議】: {recommend_str}
 
-請包含：
-1. **勝敗核心分析** (結合 EHP 與車身加成)
-2. **⚔️ 車頭與車身改進方向**
-3. **🏰 防守駐守補強建議**
+請針對 1~7 代英雄差距與專武配備，提供關鍵調配優化建議與勝敗解析。
 """
 
                 with st.spinner("AI 分析中..."):
@@ -641,10 +745,10 @@ with tab_dict:
 
     with st.expander("🛡️ 1. EHP (Effective Health Points)", expanded=True):
         st.markdown(
-            "EHP 代表真實戰場上的總承傷上限，綜合考量火晶等級加權、T10/T11 兵階加權、防禦 % 與生命 %。"
+            "EHP 代表真實戰場上的總承傷上限，綜合考量火晶等級加權、T10/T11 兵階加權、專武屬性加成、防禦 % 與生命 %。"
         )
 
-    with st.expander("⚔️ 2. 車身 (Joiner) 技能疊加機制"):
+    with st.expander("⚔️ 2. 車身 (Joiner) 星數與技能疊加機制"):
         st.markdown(
-            "集結/駐守的前 4 位車身英雄，其第一項遠征技能（如傑西 +25% 傷害）可重複疊加最高 4 層 (+100%)。"
+            "集結/駐守的前 4 位車身英雄，其第一項遠征技能可重複疊加最高 4 層。技能數值受車身英雄星數影響（5星提供 100% 技能數值，1星僅提供 20%）。"
         )
