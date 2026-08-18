@@ -22,48 +22,105 @@ tab_input, tab_compare, tab_heroes, tab_whatif, tab_advice, tab_dict = st.tabs(
         "📊 12大屬性與 Delta",
         "🦸‍♂️ 英雄與車身疊加計算",
         "🧮 配兵推薦與 What-If 模擬",
-        "💡 AI 深度診斷與戰術卡匯出",
+        "💡 AI 深度診斷與戰法匯出",
         "📖 戰術名詞小百科",
     ]
 )
 
 # ---------------------------------------------------------
-# 1. Session State 預設值初始化 (預設歸零/預設值)
+# 1. Session State 預設值初始化
 # ---------------------------------------------------------
 defaults = {
     "a_name": "攻擊方玩家",
     "d_name": "防守方玩家",
-    "a_i_fc6": 0, "a_i_fc7": 0, "a_l_fc7": 0, "a_m_fc7": 0,
-    "d_i_fc8": 0, "d_i_fc7": 0, "d_l_fc7": 0, "d_m_fc7": 0,
-    "a_i_a": 0.0, "a_i_d": 0.0, "a_i_l": 0.0, "a_i_h": 0.0,
-    "a_l_a": 0.0, "a_l_d": 0.0, "a_l_l": 0.0, "a_l_h": 0.0,
-    "a_m_a": 0.0, "a_m_d": 0.0, "a_m_l": 0.0, "a_m_h": 0.0,
-    "d_i_a": 0.0, "d_i_d": 0.0, "d_i_l": 0.0, "d_i_h": 0.0,
-    "d_l_a": 0.0, "d_l_d": 0.0, "d_l_l": 0.0, "d_l_h": 0.0,
-    "d_m_a": 0.0, "d_m_d": 0.0, "d_m_l": 0.0, "d_m_h": 0.0,
+    # 屬性面板預設 (%)
+    "a_i_a": 0.0,
+    "a_i_d": 0.0,
+    "a_i_l": 0.0,
+    "a_i_h": 0.0,
+    "a_l_a": 0.0,
+    "a_l_d": 0.0,
+    "a_l_l": 0.0,
+    "a_l_h": 0.0,
+    "a_m_a": 0.0,
+    "a_m_d": 0.0,
+    "a_m_l": 0.0,
+    "a_m_h": 0.0,
+    "d_i_a": 0.0,
+    "d_i_d": 0.0,
+    "d_i_l": 0.0,
+    "d_i_h": 0.0,
+    "d_l_a": 0.0,
+    "d_l_d": 0.0,
+    "d_l_l": 0.0,
+    "d_l_h": 0.0,
+    "d_m_a": 0.0,
+    "d_m_d": 0.0,
+    "d_m_l": 0.0,
+    "d_m_h": 0.0,
+    # 英雄與車身疊加預設
     "a_leader": "赫羅尼莫 / 傑西 / 納塔莉",
     "a_joiner_hero": "傑西 (Jessie) - 傷害 +25%",
     "a_joiner_count": 4,
     "d_leader": "赫羅尼莫 / 派翠克 / 謝爾蓋",
     "d_joiner_hero": "派翠克 (Patrick) - 生命恢復與生命提升",
     "d_joiner_count": 4,
-    "a_pet_snow": False, "a_pet_tiger": False,
-    "d_pet_snow": False, "d_pet_hyena": False,
+    # 寵物戰術勾選
+    "a_pet_snow": False,
+    "a_pet_tiger": False,
+    "d_pet_snow": False,
+    "d_pet_hyena": False,
 }
 
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
+# 預設兵力動態表格
+default_a_df = pd.DataFrame([
+    {"兵種": "🛡️ 盾兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+    {"兵種": "🗡️ 矛兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+    {"兵種": "🏹 射手", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+])
+
+default_d_df = pd.DataFrame([
+    {"兵種": "🛡️ 盾兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+    {"兵種": "🗡️ 矛兵", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+    {"兵種": "🏹 射手", "階級": "T10", "火晶等級": "FC7", "數量": 0},
+])
+
+if "a_troops_df" not in st.session_state:
+    st.session_state["a_troops_df"] = default_a_df.copy()
+if "d_troops_df" not in st.session_state:
+    st.session_state["d_troops_df"] = default_d_df.copy()
+
+# 火晶與兵階之 EHP 加權係數表
+WEIGHT_MAP = {
+    ("FC5", "T10"): 1.00,
+    ("FC5", "T11 (太陽神)"): 1.15,
+    ("FC6", "T10"): 1.08,
+    ("FC6", "T11 (太陽神)"): 1.25,
+    ("FC7", "T10"): 1.18,
+    ("FC7", "T11 (太陽神)"): 1.35,
+    ("FC8", "T10"): 1.32,
+    ("FC8", "T11 (太陽神)"): 1.50,
+}
+
 # ---------------------------------------------------------
-# TAB 1: 圖片上傳、OCR 辨識與基礎面板
+# TAB 1: 圖片上傳、OCR 辨識與動態兵種數量輸入
 # ---------------------------------------------------------
 with tab_input:
-    # 🧹 一鍵清空 / 重置按鈕 (安全還原)
-    if st.button("🧹 一鍵清空所有數值"):
-        for key in defaults.keys():
-            st.session_state[key] = defaults[key]
+    # 🧹 一鍵清空 / 安全重置按鈕
+    if st.button("🧹 一鍵清空所有數值與自訂組合"):
+        for key in list(st.session_state.keys()):
+            if key in defaults:
+                st.session_state[key] = defaults[key]
+            else:
+                del st.session_state[key]
+        st.session_state["a_troops_df"] = default_a_df.copy()
+        st.session_state["d_troops_df"] = default_d_df.copy()
         st.rerun()
+
     st.subheader("🖼️ 1. 上傳戰報截圖 (自動辨識 12 大屬性)")
     uploaded_files = st.file_uploader(
         "請上傳戰報截圖 (PNG/JPG)",
@@ -141,33 +198,74 @@ with tab_input:
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("✏️ 2. 面板與兵種數量手動微調")
+    st.subheader("✏️ 2. 面板與兵種數量 (支援 T10/T11、FC5~FC8 自由新增)")
 
     col_a, col_d = st.columns(2)
+
+    column_config_spec = {
+        "兵種": st.column_config.SelectboxColumn(
+            "兵種",
+            options=["🛡️ 盾兵", "🗡️ 矛兵", "🏹 射手"],
+            required=True,
+        ),
+        "階級": st.column_config.SelectboxColumn(
+            "階級",
+            options=["T10", "T11 (太陽神)"],
+            required=True,
+        ),
+        "火晶等級": st.column_config.SelectboxColumn(
+            "火晶等級",
+            options=["FC5", "FC6", "FC7", "FC8"],
+            required=True,
+        ),
+        "數量": st.column_config.NumberColumn(
+            "兵量",
+            min_value=0,
+            step=1000,
+            default=0,
+            required=True,
+        ),
+    }
+
+    # ---------------- 攻擊方 ----------------
     with col_a:
         st.header("⚔️ 攻擊方 (Attacker)")
         st.text_input("玩家名稱", key="a_name")
-        with st.expander("🛡️ 盾兵與火晶數量", expanded=True):
-            st.number_input(
-                "FC6 (Lv 10.0)", min_value=0, step=1000, key="a_i_fc6"
-            )
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="a_i_fc7"
-            )
-        with st.expander("🗡️ 矛兵數量", expanded=False):
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="a_l_fc7"
-            )
-        with st.expander("🏹 射手數量", expanded=False):
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="a_m_fc7"
-            )
 
-        a_inf_total = st.session_state.a_i_fc6 + st.session_state.a_i_fc7
-        a_lan_total = st.session_state.a_l_fc7
-        a_mar_total = st.session_state.a_m_fc7
+        st.caption("📋 兵種組合表 (點擊表格最下方 `+` 可新增任意組合)")
+        edited_a_df = st.data_editor(
+            st.session_state["a_troops_df"],
+            num_rows="dynamic",
+            column_config=column_config_spec,
+            use_container_width=True,
+            key="a_editor",
+        )
+        st.session_state["a_troops_df"] = edited_a_df
+
+        # 計算攻擊方兵力與 EHP 加權
+        a_inf_total, a_lan_total, a_mar_total, a_w_inf = 0, 0, 0, 0.0
+        for _, row in edited_a_df.iterrows():
+            b_type = str(row.get("兵種", ""))
+            tier = str(row.get("階級", "T10"))
+            fc = str(row.get("火晶等級", "FC7"))
+            try:
+                cnt = int(row.get("數量", 0))
+            except (ValueError, TypeError):
+                cnt = 0
+
+            if "盾" in b_type:
+                a_inf_total += cnt
+                w = WEIGHT_MAP.get((fc, tier), 1.18)
+                a_w_inf += cnt * w
+            elif "矛" in b_type:
+                a_lan_total += cnt
+            elif "射" in b_type:
+                a_mar_total += cnt
+
         a_total = a_inf_total + a_lan_total + a_mar_total
-        st.info(f"⚔️ 攻擊總兵力：**{a_total:,}**")
+        st.info(
+            f"⚔️ 攻擊總兵力：**{a_total:,}** (🛡️ 盾: {a_inf_total:,} | 🗡️ 矛: {a_lan_total:,} | 🏹 射: {a_mar_total:,})"
+        )
 
         st.caption("📈 攻擊方 12 大屬性 (%)")
         ca1, ca2 = st.columns(2)
@@ -186,30 +284,45 @@ with tab_input:
             st.number_input("射手殺傷%", key="a_m_l")
             st.number_input("射手生命%", key="a_m_h")
 
+    # ---------------- 防守方 ----------------
     with col_d:
         st.header("🏰 防守方 (Defender)")
         st.text_input("玩家名稱", key="d_name")
-        with st.expander("🛡️ 盾兵與火晶數量", expanded=True):
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="d_i_fc7"
-            )
-            st.number_input(
-                "FC8 (Lv 10.4~10.8)", min_value=0, step=1000, key="d_i_fc8"
-            )
-        with st.expander("🗡️ 矛兵數量", expanded=False):
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="d_l_fc7"
-            )
-        with st.expander("🏹 射手數量", expanded=False):
-            st.number_input(
-                "FC7 (Lv 10.1~10.3)", min_value=0, step=1000, key="d_m_fc7"
-            )
 
-        d_inf_total = st.session_state.d_i_fc7 + st.session_state.d_i_fc8
-        d_lan_total = st.session_state.d_l_fc7
-        d_mar_total = st.session_state.d_m_fc7
+        st.caption("📋 兵種組合表 (點擊表格最下方 `+` 可新增任意組合)")
+        edited_d_df = st.data_editor(
+            st.session_state["d_troops_df"],
+            num_rows="dynamic",
+            column_config=column_config_spec,
+            use_container_width=True,
+            key="d_editor",
+        )
+        st.session_state["d_troops_df"] = edited_d_df
+
+        # 計算防守方兵力與 EHP 加權
+        d_inf_total, d_lan_total, d_mar_total, d_w_inf = 0, 0, 0, 0.0
+        for _, row in edited_d_df.iterrows():
+            b_type = str(row.get("兵種", ""))
+            tier = str(row.get("階級", "T10"))
+            fc = str(row.get("火晶等級", "FC7"))
+            try:
+                cnt = int(row.get("數量", 0))
+            except (ValueError, TypeError):
+                cnt = 0
+
+            if "盾" in b_type:
+                d_inf_total += cnt
+                w = WEIGHT_MAP.get((fc, tier), 1.18)
+                d_w_inf += cnt * w
+            elif "矛" in b_type:
+                d_lan_total += cnt
+            elif "射" in b_type:
+                d_mar_total += cnt
+
         d_total = d_inf_total + d_lan_total + d_mar_total
-        st.info(f"🏰 防守總兵力：**{d_total:,}**")
+        st.info(
+            f"🏰 防守總兵力：**{d_total:,}** (🛡️ 盾: {d_inf_total:,} | 🗡️ 矛: {d_lan_total:,} | 🏹 射: {d_mar_total:,})"
+        )
 
         st.caption("📈 防守方 12 大屬性 (%)")
         cd1, cd2 = st.columns(2)
@@ -330,7 +443,6 @@ with tab_heroes:
             key="a_joiner_count",
         )
 
-        # 計算增益
         atk_buff_pct = 0
         if "傑西" in st.session_state.a_joiner_hero:
             atk_buff_pct = 25 * st.session_state.a_joiner_count
@@ -389,7 +501,6 @@ with tab_heroes:
 with tab_whatif:
     st.header("🧮 最佳配兵試算與 What-If 屬性模擬器")
 
-    # 1. 配兵比例推薦 logic
     st.subheader("💡 AI 戰術最佳集結配兵推薦 (Troop Optimizer)")
 
     d_mar_leth = st.session_state.d_m_l
@@ -406,7 +517,6 @@ with tab_whatif:
 
     st.markdown("---")
 
-    # 2. What-If 模擬
     st.subheader("🧪 What-If 邊際效益試算 (假設性增益測試)")
     st.caption("調整下方滑桿，測試「若提升特定屬性，盾兵 EHP 與對比優勢會如何改變」：")
 
@@ -425,12 +535,16 @@ with tab_whatif:
         step=10,
     )
 
-    base_ehp = (st.session_state.a_i_fc6 * 1.08 + st.session_state.a_i_fc7 * 1.18) * (
-        1 + st.session_state.a_i_h / 100
-    ) * (1 + st.session_state.a_i_d / 100)
-    sim_ehp = (st.session_state.a_i_fc6 * 1.08 + st.session_state.a_i_fc7 * 1.18) * (
-        1 + (st.session_state.a_i_h + sim_add_h) / 100
-    ) * (1 + (st.session_state.a_i_d + sim_add_d) / 100)
+    base_ehp = (
+        a_w_inf
+        * (1 + st.session_state.a_i_h / 100)
+        * (1 + st.session_state.a_i_d / 100)
+    )
+    sim_ehp = (
+        a_w_inf
+        * (1 + (st.session_state.a_i_h + sim_add_h) / 100)
+        * (1 + (st.session_state.a_i_d + sim_add_d) / 100)
+    )
 
     m_b1, m_b2, m_b3 = st.columns(3)
     m_b1.metric("當前實際 EHP", f"{base_ehp:,.0f}")
@@ -439,21 +553,16 @@ with tab_whatif:
         f"{sim_ehp:,.0f}",
         delta=f"+{sim_ehp - base_ehp:,.0f}",
     )
-    m_b3.metric("EHP 成長幅度", f"+{((sim_ehp/base_ehp)-1)*100:.1f}%")
+    m_b3.metric(
+        "EHP 成長幅度",
+        f"+{((sim_ehp/base_ehp)-1)*100:.1f}%" if base_ehp > 0 else "0%",
+    )
 
 # ---------------------------------------------------------
 # TAB 5: AI 戰術大師診斷與報告匯出
 # ---------------------------------------------------------
 with tab_advice:
     st.header("💡 AI 戰況總覽與戰術摘要卡")
-
-    # EHP 計算
-    a_w_inf = (st.session_state.a_i_fc6 * 1.08) + (
-        st.session_state.a_i_fc7 * 1.18
-    )
-    d_w_inf = (st.session_state.d_i_fc7 * 1.18) + (
-        st.session_state.d_i_fc8 * 1.32
-    )
 
     a_ehp = (
         a_w_inf
@@ -532,7 +641,7 @@ with tab_dict:
 
     with st.expander("🛡️ 1. EHP (Effective Health Points)", expanded=True):
         st.markdown(
-            "EHP 代表真實戰場上的總承傷上限，綜合考量火晶加權兵量、防禦 % 與生命 %。"
+            "EHP 代表真實戰場上的總承傷上限，綜合考量火晶等級加權、T10/T11 兵階加權、防禦 % 與生命 %。"
         )
 
     with st.expander("⚔️ 2. 車身 (Joiner) 技能疊加機制"):
